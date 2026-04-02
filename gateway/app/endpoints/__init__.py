@@ -16,6 +16,7 @@ from app.settings import (
 )
 
 from . import (
+    application_profiles,
     geofencing_subscriptions,
     location,
     quality_on_demand,
@@ -68,3 +69,6 @@ if settings.roaming_status.backend != RoamingStatusBackend.Disabled:
     router.include_router(
         roaming_status.subscriptions_router, tags=["Device Roaming Status"]
     )
+
+#TODO add to settings
+router.include_router(application_profiles.router, tags=["Application Profiles"])
