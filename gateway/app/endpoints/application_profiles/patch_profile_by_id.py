@@ -16,7 +16,7 @@ async def patch_application_profile_by_id(
     application_profile: ApplicationProfile
 ):
     if applicationProfileId != application_profile.root.applicationProfileId:
-        raise BadRequest()
+        raise BadRequest("Client specified incompatible applicationProfileIds in path and body")
     json_data = jsonable_encoder(application_profile, exclude={'applicationProfileId'})
 
     updated_app_prof = await crud_mongo.replace_update_by_id(db_mongo, db_collection, applicationProfileId, json_data)
