@@ -10,6 +10,7 @@ dependencies = [
     "pydantic-settings>=2.8.1",
     "redis[hiredis]>=5.2.1",
     "geopy>=2.4.1",
+    "pymongo>=4.16.0",
 ]
 
 [dependency-groups]
