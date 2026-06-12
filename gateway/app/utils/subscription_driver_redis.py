@@ -9,6 +9,7 @@ from pydantic import TypeAdapter
 
 
 from app.exceptions import ResourceNotFound
+from app.schemas.common import XCorrelator
 from app.redis import get_redis
 from app.schemas.subscriptions import (
     HTTPSubscriptionResponse,
@@ -59,6 +60,7 @@ class SubscriptionDriverRedis[
             HTTPSubscriptionResponse(
                 protocol=Protocol.HTTP,
                 sink=req.sink,
+                sinkCredential=req.sinkCredential,
                 types=req.types,
                 config=req.config,
                 startsAt=datetime.now(
@@ -148,6 +150,7 @@ class SubscriptionDriverRedis[
         subscription: Subscription[SubscriptionEventType, SubscriptionDetails],
         type: NotificationEventType,
         data: CloudEventData,
+        x_correlator: XCorrelator | None = None,
         **delete_kwargs: Any,
     ) -> None:
         if subscription.config.subscriptionMaxEvents is not None:
@@ -161,7 +164,7 @@ class SubscriptionDriverRedis[
                     **delete_kwargs,
                 )
 
-        await self.notify_sink(subscription, type, data)
+        await self.notify_sink(subscription, type, data, x_correlator)
 
     async def clear_loop(self) -> Never:
         while True:

@@ -13,10 +13,13 @@ from app.settings import (
     RoamingStatusBackend,
     SMSBackend,
     settings,
+    AppProfilesBackend,
+    ConnectivityInsightsSubscriptionsBackend,
 )
 
 from . import (
     application_profiles,
+    connectivity_insights_subscriptions,
     geofencing_subscriptions,
     location,
     quality_on_demand,
@@ -70,5 +73,14 @@ if settings.roaming_status.backend != RoamingStatusBackend.Disabled:
         roaming_status.subscriptions_router, tags=["Device Roaming Status"]
     )
 
-#TODO add to settings
-router.include_router(application_profiles.router, tags=["Application Profiles"])
+if settings.application_profiles.backend != AppProfilesBackend.Disabled:
+    router.include_router(application_profiles.router, tags=["Application Profiles"])
+
+if (
+    settings.connectivity_insights_subscriptions.backend
+    != ConnectivityInsightsSubscriptionsBackend.Disabled
+):
+    router.include_router(
+        connectivity_insights_subscriptions.router,
+        tags=["Connectivity Insights Subscriptions"],
+    )

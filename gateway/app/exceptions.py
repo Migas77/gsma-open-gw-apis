@@ -25,18 +25,18 @@ class MissingDevice(ApiException):
 
 
 class ResourceNotFound(ApiException):
-    def __init__(self) -> None:
+    def __init__(self, message: str = "The specified resource is not found.") -> None:
         super().__init__(
             status=404,
             code="NOT_FOUND",
-            message="The specified resource is not found.",
+            message=message,
         )
 
 
 class BadRequest(ApiException):
     def __init__(
         self,
-        message: str = "Client specified an invalid argument, request body or query param."
+        message: str = "Client specified an invalid argument, request body or query param.",
     ) -> None:
         super().__init__(
             status=400,
@@ -46,8 +46,8 @@ class BadRequest(ApiException):
 
 
 class InternalServerError(ApiException):
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, message: str = "An unknown error has occured.") -> None:
+        super().__init__(message=message)
 
 
 class UnsupportedIdentifier(ApiException):

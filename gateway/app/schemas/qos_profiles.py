@@ -4,7 +4,7 @@ from typing import Optional, Union, Annotated
 
 from pydantic import BaseModel, Field, RootModel
 
-from .common import PhoneNumber, NetworkAccessIdentifier, Port
+from app.schemas.common import PhoneNumber, NetworkAccessIdentifier, Port, PacketErrorLossRate, Duration
 
 
 class L4sQueueType(Enum):
@@ -37,16 +37,6 @@ QosProfileName = Annotated[
 ]
 
 
-class TimeUnitEnum(Enum):
-    Days = "Days"
-    Hours = "Hours"
-    Minutes = "Minutes"
-    Seconds = "Seconds"
-    Milliseconds = "Milliseconds"
-    Microseconds = "Microseconds"
-    Nanoseconds = "Nanoseconds"
-
-
 class QosProfileStatus(Enum):
     ACTIVE = "ACTIVE"
     INACTIVE = "INACTIVE"
@@ -67,13 +57,6 @@ class Rate(BaseModel):
         Field(ge=0, le=1024, description="Quantity of rate", examples=[10]),
     ] = None
     unit: Optional[RateUnitEnum] = None
-
-
-class Duration(BaseModel):
-    value: Annotated[
-        Optional[int], Field(ge=1, description="Quantity of duration", examples=[12])
-    ] = None
-    unit: Optional[TimeUnitEnum] = None
 
 
 class DeviceIpv4Addr1(BaseModel):
@@ -171,15 +154,7 @@ class QosProfile(BaseModel):
             description="The jitter requirement aims to limit the maximum variation in round-trip\npacket delay for the 99th percentile of traffic, following ITU Y.1540\nstandards. It considers only acknowledged packets in a session, which are\npackets that receive a confirmation of receipt from the recipient (e.g.,\nusing TCP). This requirement helps maintain consistent latency, essential\nfor real-time applications such as VoIP, video calls, and gaming.",
         ),
     ] = None
-    packetErrorLossRate: Annotated[
-        Optional[int],
-        Field(
-            ge=1,
-            le=10,
-            description="This field specifies the acceptable level of data loss during transmission.\nThe value is an exponent of 10, so a value of 3 means that up to 10⁻³, or 0.1%, of the\ndata packets may be lost. This setting is part of a broader system that categorizes\ndifferent types of network traffic (like phone calls, video streams, or data transfers)\nto ensure they perform reliably on the network.",
-            examples=[3],
-        ),
-    ] = None
+    packetErrorLossRate: Optional[PacketErrorLossRate] = None
     l4sQueueType: Annotated[
         Optional[L4sQueueType],
         Field(

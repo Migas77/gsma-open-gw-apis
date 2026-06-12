@@ -29,8 +29,10 @@ backend = "nef"
 [qod_provisioning]
 backend = "nef"
 
+
 [qod]
 backend = "nef"
+
 
 [geofencing]
 backend = "nef"
@@ -39,5 +41,18 @@ backend = "nef"
 [reachability_status]
 backend = "nef"
 
+
 [roaming_status]
 backend = "nef"
+
+
+[application_profiles]
+backend = "redis"
+
+
+[connectivity_insights_subscriptions]
+backend = "nef"
+offset_period = -5
+temporal_gran_size = 5
+rep_period = 5
+

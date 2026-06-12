@@ -2,7 +2,7 @@ from enum import Enum
 from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 from datetime import datetime
 
-from pydantic import AnyUrl, BaseModel, Field
+from pydantic import AnyUrl, BaseModel, Field, AnyHttpUrl, ConfigDict, PrivateAttr
 
 
 class SubscriptionStatus(str, Enum):
@@ -30,7 +30,7 @@ class CredentialType(str, Enum):
 
 class SinkCredential(BaseModel):
     credentialType: Annotated[
-        CredentialType, Field(description="The type of the credential.")
+        CredentialType, Field(description="The type of the credential.\nNote: Type of the credential - MUST be set to ACCESSTOKEN for now\n")
     ]
 
 
@@ -41,6 +41,7 @@ class PlainCredential(SinkCredential):
     secret: Annotated[
         str, Field(description="The secret might be a password or passphrase.")
     ]
+    credentialType: Literal[CredentialType.PLAIN]
 
 
 class AccessTokenType(str, Enum):
@@ -66,6 +67,7 @@ class AccessTokenCredential(SinkCredential):
             description="REQUIRED. Type of the access token (See [OAuth 2.0](https://tools.ietf.org/html/rfc6749#section-7.1))."
         ),
     ]
+    credentialType: Literal[CredentialType.ACCESSTOKEN]
 
 
 class RefreshTokenCredential(SinkCredential):
@@ -99,6 +101,7 @@ class RefreshTokenCredential(SinkCredential):
             description="REQUIRED. A URL at which the refresh token can be traded for an access token."
         ),
     ]
+    credentialType: Literal[CredentialType.REFRESHTOKEN]
 
 
 Source = Annotated[
@@ -262,7 +265,7 @@ class SubscriptionConfig[SubscriptionDetails](BaseModel):
 
 class BaseSubscription[SubscriptionEventType: str, SubscriptionDetails](BaseModel):
     sink: Annotated[
-        str,
+        AnyHttpUrl,
         Field(
             description="The address to which events shall be delivered using the selected protocol.",
             examples=["https://endpoint.example.com/sink"],
@@ -357,13 +360,16 @@ class SubscriptionRequestBase[SubscriptionEventType: str, SubscriptionDetail](
     BaseModel
 ):
     sink: Annotated[
-        str,
+        AnyHttpUrl,
         Field(
             description="The address to which events shall be delivered using the selected protocol.",
             examples=["https://endpoint.example.com/sink"],
         ),
     ]
-    sinkCredential: Optional[SinkCredential] = None
+    sinkCredential: Annotated[
+        Optional[PlainCredential | AccessTokenCredential | RefreshTokenCredential],
+        Field(discriminator="credentialType"),
+    ] = None
     types: Annotated[
         List[SubscriptionEventType],
         Field(
@@ -420,3 +426,5 @@ type SubscriptionRequest[SubscriptionEventType: str, SubscriptionDetail] = Annot
     ],
     Field(discriminator="protocol"),
 ]
+
+# TODO: check different sinkcredentials

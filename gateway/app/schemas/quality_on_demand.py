@@ -1,12 +1,13 @@
 from datetime import datetime
 from enum import Enum
-from typing import Annotated, List, Optional
+from typing import Annotated, Optional
 from uuid import UUID
 
-from pydantic import AnyUrl, BaseModel, ConfigDict, Field
+from pydantic import AnyUrl, BaseModel, Field
 
 from app.schemas import subscriptions
-from app.schemas.device import Device, Port
+from app.schemas.common import ApplicationServer, PortsSpec
+from app.schemas.device import Device
 from app.schemas.qodProvisioning import (
     QosProfileName,
     Status,
@@ -17,27 +18,10 @@ from app.schemas.subscriptions import SinkCredential
 SessionId = Annotated[UUID, Field(description="Session ID in UUID format")]
 
 
-class Range(BaseModel):
-    model_config = ConfigDict(serialize_by_alias=True)
-    from_: Annotated[Port, Field(alias="from")]
-    to: Port
-
-
 class StatusInfo(Enum):
     DURATION_EXPIRED = "DURATION_EXPIRED"
     NETWORK_TERMINATED = "NETWORK_TERMINATED"
     DELETE_REQUESTED = "DELETE_REQUESTED"
-
-
-class PortsSpec(BaseModel):
-    ranges: Annotated[
-        Optional[List[Range]],
-        Field(description="Range of TCP or UDP ports", min_length=1),
-    ] = None
-    ports: Annotated[
-        Optional[List[Port]],
-        Field(description="Array of TCP or UDP ports", min_length=1),
-    ] = None
 
 
 class ExtendSessionDuration(BaseModel):
@@ -59,23 +43,6 @@ class NotificationEventType(str, Enum):
 
 class RetrieveSessionsInput(BaseModel):
     device: Optional[Device] = None
-
-
-class ApplicationServer(BaseModel):
-    ipv4Address: Annotated[
-        Optional[str],
-        Field(
-            description="IPv4 address may be specified in form <address/mask> as:\n  - address - an IPv4 number in dotted-quad form 1.2.3.4. Only this exact IP number will match the flow control rule.\n  - address/mask - an IP number as above with a mask width of the form 1.2.3.4/24.\n    In this case, all IP numbers from 1.2.3.0 to 1.2.3.255 will match. The bit width MUST be valid for the IP version.",
-            examples=["198.51.100.0/24"],
-        ),
-    ] = None
-    ipv6Address: Annotated[
-        Optional[str],
-        Field(
-            description="IPv6 address may be specified in form <address/mask> as:\n  - address - The /128 subnet is optional for single addresses:\n    - 2001:db8:85a3:8d3:1319:8a2e:370:7344\n    - 2001:db8:85a3:8d3:1319:8a2e:370:7344/128\n  - address/mask - an IP v6 number with a mask:\n    - 2001:db8:85a3:8d3::0/64\n    - 2001:db8:85a3:8d3::/64",
-            examples=["2001:db8:85a3:8d3:1319:8a2e:370:7344"],
-        ),
-    ] = None
 
 
 class BaseSessionInfo(BaseModel):

@@ -1,3 +1,4 @@
+import json
 import types
 import typing
 import logging
@@ -5,7 +6,7 @@ from enum import Enum
 from collections.abc import Generator
 from typing import Annotated, Any, Literal, Optional, TypeAliasType, Union
 
-from pydantic import AnyHttpUrl, BaseModel, Field, PositiveInt, RedisDsn
+from pydantic import AfterValidator, AnyHttpUrl, BaseModel, Field, PositiveInt, RedisDsn, ValidationInfo, model_validator
 from pydantic.fields import FieldInfo
 from pydantic_settings import (
     BaseSettings,
@@ -144,6 +145,81 @@ class NEFSettingsHierachySettingsSource(PydanticBaseSettingsSource):
                     )
 
         return values
+
+
+def requires_enabled_backend(dependency_field: str) -> AfterValidator:
+    """Field annotation that raises if this field's backend is enabled while the given dependency backend is disabled."""
+    def _validator(v: Any, info: ValidationInfo) -> Any:
+        dependency = info.data.get(dependency_field)
+        if dependency is not None and v.backend != "disabled" and dependency.backend == "disabled":
+            raise ValueError(f"requires '{dependency_field}' to be enabled")
+        return v
+    return AfterValidator(_validator)
+
+
+class AppProfilesBackend(str, Enum):
+    Disabled = "disabled"
+    Redis = "redis"
+
+
+class BaseAppProfilesSettings(BaseModel):
+    pass
+
+
+class DisabledAppProfilesSettings(BaseAppProfilesSettings):
+    backend: Literal[AppProfilesBackend.Disabled] = AppProfilesBackend.Disabled
+
+
+class RedisAppProfilesSettings(BaseAppProfilesSettings):
+    backend: Literal[AppProfilesBackend.Redis] = AppProfilesBackend.Redis
+
+
+type AppProfilesSettings = Annotated[
+    DisabledAppProfilesSettings | RedisAppProfilesSettings,
+    Field(discriminator="backend"),
+]
+
+
+class ConnectivityInsightsSubscriptionsBackend(str, Enum):
+    Disabled = "disabled"
+    NEF = "nef"
+
+
+class BaseConnectivityInsightsSubscriptionsSettings(BaseModel):
+    pass
+
+
+class DisabledConnectivityInsightsSubscriptionsSettings(
+    BaseConnectivityInsightsSubscriptionsSettings
+):
+    backend: Literal[ConnectivityInsightsSubscriptionsBackend.Disabled] = (
+        ConnectivityInsightsSubscriptionsBackend.Disabled
+    )
+
+
+class NEFConnectivityInsightsSubscriptionsSettings(
+    BaseConnectivityInsightsSubscriptionsSettings
+):
+    backend: Literal[ConnectivityInsightsSubscriptionsBackend.NEF] = (
+        ConnectivityInsightsSubscriptionsBackend.NEF
+    )
+    nef: NEFSettings
+    offset_period: Annotated[int, Field(le=-1)] = -5                        # negative (historic data) - in seconds
+    temporal_gran_size: Annotated[int, Field(ge=1)] = 5                     # in seconds
+    rep_period: Annotated[int, Field(ge=1)] = 5                             # in seconds
+
+    @model_validator(mode="after")
+    def validate_temporal_gran_size(self) -> "NEFConnectivityInsightsSubscriptionsSettings":
+        if self.temporal_gran_size < abs(self.offset_period):
+            raise ValueError("temporal_gran_size must be >= abs(offset_period)")
+        return self
+
+
+type ConnectivityInsightsSubscriptionsSettings = Annotated[
+    DisabledConnectivityInsightsSubscriptionsSettings
+    | NEFConnectivityInsightsSubscriptionsSettings,
+    Field(discriminator="backend"),
+]
 
 
 class SMSBackend(str, Enum):
@@ -390,6 +466,11 @@ class Settings(BaseSettings):
     geofencing: GeofencingSettings = DisabledGeofencingSettings()
     qod: QodSettings = DisabledQodSettings()
     roaming_status: RoamingStatusSettings = DisabledRoamingStatusSettings()
+    application_profiles: AppProfilesSettings = DisabledAppProfilesSettings()
+    connectivity_insights_subscriptions: Annotated[
+        ConnectivityInsightsSubscriptionsSettings,
+        requires_enabled_backend("application_profiles"),
+    ] = DisabledConnectivityInsightsSubscriptionsSettings()
 
     @classmethod
     def settings_customise_sources(

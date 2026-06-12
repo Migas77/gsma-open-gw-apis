@@ -38,12 +38,12 @@ from app.schemas.quality_on_demand import (
     Data,
     EventQosStatus,
     ExtendSessionDuration,
-    PortsSpec,
     SessionInfo,
     NotificationEventType,
     CloudEvent,
     StatusInfo,
 )
+from app.schemas.common import PortsSpec
 from app.schemas.subscriptions import Datacontenttype, Specversion
 from app.settings import NEFSettings
 

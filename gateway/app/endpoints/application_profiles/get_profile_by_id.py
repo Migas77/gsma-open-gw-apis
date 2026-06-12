@@ -1,20 +1,14 @@
-from uuid import UUID
 from fastapi import APIRouter
-from app.crud import crud_mongo
-from app.db.session import db_mongo
-from app.db.collections import APPLICATION_PROFILES
-from app.exceptions import ResourceNotFound
-from app.schemas.application_profiles import ApplicationProfile
+
+from app.drivers.application_profiles import ApplicationProfilesInterfaceDep
+from app.schemas.application_profiles import ApplicationProfile, ApplicationProfileId
 
 router = APIRouter()
-db_collection = APPLICATION_PROFILES
 
-@router.get("/application-profiles/{applicationProfileId}", response_model=ApplicationProfile)
-async def get_application_profile_by_id(applicationProfileId: UUID):
-    app_prof = await crud_mongo.read_by_id(db_mongo, db_collection, applicationProfileId)
-    if app_prof is None:
-        raise ResourceNotFound()
 
-    app_prof["applicationProfileId"] = applicationProfileId
-    return app_prof
-
+@router.get("/application-profiles/{applicationProfileId}")
+async def get_application_profile_by_id(
+    applicationProfileId: ApplicationProfileId,
+    app_profiles_interface: ApplicationProfilesInterfaceDep
+) -> ApplicationProfile:
+    return await app_profiles_interface.get_profile_by_id(applicationProfileId)

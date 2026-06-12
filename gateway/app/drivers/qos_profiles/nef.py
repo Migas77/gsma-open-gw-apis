@@ -8,14 +8,13 @@ from app.drivers.nef_auth import NEFAuth
 from app.interfaces.qos_profiles import QoSProfilesInterface
 from app.schemas.nef import NEFNamedQoSProfile, NEFQoSProfile
 from app.schemas.qos_profiles import (
-    Duration,
     QosProfile,
     QosProfileDeviceRequest,
     QosProfileStatus,
     Rate,
     RateUnitEnum,
-    TimeUnitEnum,
 )
+from app.schemas.common import Duration, TimeUnitEnum
 from app.settings import NEFSettings
 
 

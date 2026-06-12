@@ -4,7 +4,7 @@ from . import (
     create_profile,
     delete_profile_by_id,
     get_profile_by_id,
-    patch_profile_by_id
+    patch_profile_by_id,
 )
 
 router = APIRouter(prefix="/application-profiles/v0.5")
