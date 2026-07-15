@@ -1,11 +1,12 @@
 import datetime
 import logging
+from functools import cached_property
 from typing import Awaitable, List
 import uuid
 
 import httpx
 
-from app.drivers.nef_auth import NEFAuth
+from app.drivers.nef_auth import get_nef_httpx_client, discover_nef_url
 from app.exceptions import (
     InternalServerError,
     ResourceNotFound,
@@ -57,12 +58,7 @@ class NEFQoDInterface(QoDInterface):
     def __init__(self, nef_settings: NEFSettings, source: str) -> None:
         super().__init__()
 
-        nef_auth = NEFAuth(
-            nef_settings.url, nef_settings.username, nef_settings.password
-        )
-        self.httpx_client = httpx.AsyncClient(
-            base_url=nef_settings.get_base_url(), auth=nef_auth
-        )
+        self.nef_settings = nef_settings
         self.httpx_client_callback = httpx.AsyncClient()
 
         self.af_id = nef_settings.gateway_af_id
@@ -70,6 +66,10 @@ class NEFQoDInterface(QoDInterface):
         self.notification_url = nef_settings.get_notification_url()
 
         self.redis = get_redis()
+
+    @cached_property
+    def httpx_client(self) -> httpx.AsyncClient:
+        return get_nef_httpx_client(nef_settings=self.nef_settings)
 
     async def create_provisioning(
         self, req: CreateSession, device: Device
@@ -111,7 +111,13 @@ class NEFQoDInterface(QoDInterface):
             payload.gpsi = f"msisdn-{phone_number}"
 
         res = await self.httpx_client.post(
-            f"/3gpp-as-session-with-qos/v1/{self.af_id}/subscriptions",
+            discover_nef_url(
+                nef_settings=self.nef_settings,
+                fallback="/3gpp-as-session-with-qos/v1/{scsAsId}/subscriptions",
+                resource_name="Create Subscription",
+                api_name_filter="as-session-with-qos",
+                operation="POST",
+            ).format(scsAsId=self.af_id),
             content=payload.model_dump_json(exclude_unset=True),
             headers={"Content-Type": "application/json"},
         )

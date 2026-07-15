@@ -1,10 +1,11 @@
+from functools import cached_property
 from typing import List
 
 import math
 import httpx
 from pydantic import TypeAdapter
 
-from app.drivers.nef_auth import NEFAuth
+from app.drivers.nef_auth import get_nef_httpx_client, _get_nef_auth
 from app.interfaces.qos_profiles import QoSProfilesInterface
 from app.schemas.nef import NEFNamedQoSProfile, NEFQoSProfile
 from app.schemas.qos_profiles import (
@@ -66,9 +67,7 @@ class NefQoSProfilesInterface(QoSProfilesInterface):
     def __init__(self, nef_settings: NEFSettings) -> None:
         super().__init__()
 
-        nef_auth = NEFAuth(
-            nef_settings.url, nef_settings.username, nef_settings.password
-        )
+        nef_auth = _get_nef_auth(nef_settings)
         self.httpx_client = httpx.AsyncClient(
             base_url=str(nef_settings.url), auth=nef_auth
         )

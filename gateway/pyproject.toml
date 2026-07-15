@@ -10,6 +10,7 @@ dependencies = [
     "pydantic-settings>=2.8.1",
     "redis[hiredis]>=5.2.1",
     "geopy>=2.4.1",
+    "opencapif-sdk>=0.1.24",
 ]
 
 [dependency-groups]

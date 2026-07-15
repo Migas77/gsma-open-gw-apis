@@ -9,6 +9,7 @@ import geopy.distance
 from fastapi.encoders import jsonable_encoder
 from pydantic import AnyUrl
 
+from app.drivers.nef_auth import discover_nef_url
 from app.exceptions import ApiException
 from app.interfaces.geofencing_subscriptions import (
     GeofencingSubscriptionInterface,
@@ -108,7 +109,13 @@ class NefGeofencingSubscriptionInterface(
             body = self.install_device_identifiers(body, device)
 
             res = await self.httpx_client.post(
-                f"/3gpp-monitoring-event/v1/{self.af_id}/subscriptions",
+                discover_nef_url(
+                    nef_settings=self.nef_settings,
+                    fallback="/3gpp-monitoring-event/v1/{scsAsId}/subscriptions",
+                    resource_name="Create Subscription",
+                    api_name_filter="monitoring-event",
+                    operation="POST",
+                ).format(scsAsId=self.af_id),
                 json=jsonable_encoder(body),
             )
 

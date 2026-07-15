@@ -4,6 +4,7 @@ import typing
 import logging
 from enum import Enum
 from collections.abc import Generator
+from pathlib import Path
 from typing import Annotated, Any, Literal, Optional, TypeAliasType, Union
 
 from pydantic import AfterValidator, AnyHttpUrl, BaseModel, Field, PositiveInt, RedisDsn, ValidationInfo, model_validator
@@ -15,7 +16,14 @@ from pydantic_settings import (
     TomlConfigSettingsSource,
 )
 
+from app.capif import CAPIF_SDK_CONFIG_PATH
+
 LogLevel = Literal["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"]
+
+
+class NEFAuthMode(str, Enum):
+    NEF = "nef"
+    CAPIF = "capif"
 
 
 class NEFSettings(BaseModel):
@@ -25,8 +33,15 @@ class NEFSettings(BaseModel):
     gateway_af_id: str
     gateway_notification_url: AnyHttpUrl
 
-    username: str
-    password: str
+    auth_mode: NEFAuthMode = NEFAuthMode.NEF
+    username: Optional[str] = None
+    password: Optional[str] = None
+
+    @model_validator(mode="after")
+    def validate_auth_credentials(self) -> "NEFSettings":
+        if self.auth_mode == NEFAuthMode.NEF and (not self.username or not self.password):
+            raise ValueError("username and password are required when auth_mode is 'nef'")
+        return self
 
     def get_base_url(self) -> str:
         stripped_url = str(self.url).rstrip("/")
@@ -440,6 +455,34 @@ class RedisSettings(BaseModel):
     password: Optional[str] = None
 
 
+class CAPIFSDKSettings(BaseModel):
+    capif_host: str = "capifcore"
+    register_host: str = "capifcore"
+    capif_https_port: PositiveInt = 443
+    capif_register_port: PositiveInt = 8084
+    debug_mode: bool = True
+    capif_username: Optional[str] = None
+    capif_password: Optional[str] = None
+    capif_callback_url: str = "http://your-callback-host/callback/"
+
+    @model_validator(mode="after")
+    def fill_json_opencapif_sdk_config(self) -> "CAPIFSDKSettings":
+        config_path = Path(CAPIF_SDK_CONFIG_PATH)
+        config = json.loads(config_path.read_text())
+        config.update({
+            "capif_host": self.capif_host,
+            "register_host": self.register_host,
+            "capif_https_port": str(self.capif_https_port),
+            "capif_register_port": str(self.capif_register_port),
+            "debug_mode": str(self.debug_mode),
+            "capif_username": self.capif_username,
+            "capif_password": self.capif_password,
+        })
+        config["invoker"]["capif_callback_url"] = self.capif_callback_url
+        config_path.write_text(json.dumps(config, indent=4))
+        return self
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         toml_file="config.toml",
@@ -453,6 +496,10 @@ class Settings(BaseSettings):
     redis: RedisSettings = RedisSettings()
 
     gateway_public_url: AnyHttpUrl = AnyHttpUrl("http://localhost:8000")
+    gsma_apis_protected_by_capif: bool = False
+
+    capif_sdk: CAPIFSDKSettings = CAPIFSDKSettings()
+
 
     nef: Optional[NEFSettings] = None
 
@@ -471,6 +518,17 @@ class Settings(BaseSettings):
         ConnectivityInsightsSubscriptionsSettings,
         requires_enabled_backend("application_profiles"),
     ] = DisabledConnectivityInsightsSubscriptionsSettings()
+
+    @model_validator(mode="after")
+    def validate_capif_sdk_credentials(self) -> "Settings":
+        nef_uses_capif = self.nef is not None and self.nef.auth_mode == NEFAuthMode.CAPIF
+        if nef_uses_capif or self.gsma_apis_protected_by_capif:
+            if not self.capif_sdk.capif_username or not self.capif_sdk.capif_password:
+                raise ValueError(
+                    "capif_username and capif_password are required when NEF auth_mode is CAPIF and/or "
+                    "when the CAMARA APIs are protected by CAPIF"
+                )
+        return self
 
     @classmethod
     def settings_customise_sources(

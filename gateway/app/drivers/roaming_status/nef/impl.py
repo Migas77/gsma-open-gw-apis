@@ -6,6 +6,7 @@ from datetime import datetime
 from pydantic import AnyHttpUrl, AnyUrl
 from fastapi.encoders import jsonable_encoder
 
+from app.drivers.nef_auth import discover_nef_url
 from app.interfaces.roaming_status import (
     RoamingStatusInterface,
     RoamingStatusSubscriptionInterface,
@@ -74,7 +75,13 @@ class NefRoamingStatusInterface(
         sub = self.install_device_identifiers(sub, device)
 
         nef_res = await self.httpx_client.post(
-            f"3gpp-monitoring-event/v1/{self.af_id}/subscriptions",
+            discover_nef_url(
+                nef_settings=self.nef_settings,
+                fallback="/3gpp-monitoring-event/v1/{scsAsId}/subscriptions",
+                resource_name="Create Subscription",
+                api_name_filter="monitoring-event",
+                operation="POST",
+            ).format(scsAsId=self.af_id),
             json=jsonable_encoder(sub, exclude_unset=True),
         )
 
@@ -128,7 +135,13 @@ class NefRoamingStatusInterface(
             body = self.install_device_identifiers(body, device)
 
             res = await self.httpx_client.post(
-                f"3gpp-monitoring-event/v1/{self.af_id}/subscriptions",
+                discover_nef_url(
+                    nef_settings=self.nef_settings,
+                    fallback="/3gpp-monitoring-event/v1/{scsAsId}/subscriptions",
+                    resource_name="Read Active Subscriptions",
+                    api_name_filter="monitoring-event",
+                    operation="POST",
+                ).format(scsAsId=self.af_id),
                 json=jsonable_encoder(body, exclude_unset=True, exclude_none=True),
             )
 

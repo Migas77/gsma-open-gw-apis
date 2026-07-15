@@ -1,7 +1,8 @@
 from enum import Enum
 from typing import Annotated, Optional, Literal, Union
 
-from pydantic import BaseModel, Field, TypeAdapter, AnyUrl
+from pydantic import BaseModel, Field, TypeAdapter, AliasChoices
+from pydantic.json_schema import SkipJsonSchema
 
 from app.schemas import subscriptions
 from app.schemas.application_profiles import ApplicationProfileId
@@ -13,7 +14,9 @@ from app.schemas.subscriptions import SubscriptionId, BaseSubscription, Protocol
 AliasedSubscriptionId = Annotated[
     SubscriptionId,
     Field(
-        serialization_alias="subscriptionId",
+        # accepts id for input
+        # but appears as subscriptionId in output and swagger to match spec API
+        validation_alias=AliasChoices('subscriptionId', 'id'),
     ),
 ]
 
@@ -116,53 +119,53 @@ SubscriptionRequestTypeAdapter: TypeAdapter[SubscriptionRequest] = TypeAdapter(S
 # (internal logic uses the same Subscription format as other APIs from subscriptions.py)
 
 
-class ConnectivityInsightsSubscriptionsBase[SubscriptionEventType: str, SubscriptionDetails](
-    BaseSubscription[SubscriptionEventType, SubscriptionDetails]
+class ConnectivityInsightsSubscriptionsBase[SubEventType: str, SubscriptionDetails](
+    BaseSubscription[SubEventType, SubscriptionDetails]
 ):
     id: AliasedSubscriptionId
-    sinkCredential: Optional[SinkCredential] = Field(exclude=True)
+    sinkCredential: SkipJsonSchema[Optional[SinkCredential]] = Field(default=None, exclude=True)
 
-class HTTPSubscriptionResponse[SubscriptionEventType: str, SubscriptionDetail](
-    ConnectivityInsightsSubscriptionsBase[SubscriptionEventType, SubscriptionDetail]
+class HTTPSubscriptionResponse[SubEventType: str, SubscriptionDetail](
+    ConnectivityInsightsSubscriptionsBase[SubEventType, SubscriptionDetail]
 ):
     protocol: Literal[Protocol.HTTP]
     protocolSettings: Optional[HTTPSettings] = None
 
-class MQTTSubscriptionResponse[SubscriptionEventType: str, SubscriptionDetail](
-    ConnectivityInsightsSubscriptionsBase[SubscriptionEventType, SubscriptionDetail]
+class MQTTSubscriptionResponse[SubEventType: str, SubscriptionDetail](
+    ConnectivityInsightsSubscriptionsBase[SubEventType, SubscriptionDetail]
 ):
     protocol: Union[Literal[Protocol.MQTT3], Literal[Protocol.MQTT5]]
     protocolSettings: Optional[MQTTSettings] = None
 
 
-class AMQPSubscriptionResponse[SubscriptionEventType: str, SubscriptionDetail](
-    ConnectivityInsightsSubscriptionsBase[SubscriptionEventType, SubscriptionDetail]
+class AMQPSubscriptionResponse[SubEventType: str, SubscriptionDetail](
+    ConnectivityInsightsSubscriptionsBase[SubEventType, SubscriptionDetail]
 ):
     protocol: Literal[Protocol.AMQP]
     protocolSettings: Optional[AMQPSettings] = None
 
 
-class ApacheKafkaSubscriptionResponse[SubscriptionEventType: str, SubscriptionDetail](
-    ConnectivityInsightsSubscriptionsBase[SubscriptionEventType, SubscriptionDetail]
+class ApacheKafkaSubscriptionResponse[SubEventType: str, SubscriptionDetail](
+    ConnectivityInsightsSubscriptionsBase[SubEventType, SubscriptionDetail]
 ):
     protocol: Literal[Protocol.KAFKA]
     protocolSettings: Optional[ApacheKafkaSettings] = None
 
 
-class NATSSubscriptionResponse[SubscriptionEventType: str, SubscriptionDetail](
-    ConnectivityInsightsSubscriptionsBase[SubscriptionEventType, SubscriptionDetail]
+class NATSSubscriptionResponse[SubEventType: str, SubscriptionDetail](
+    ConnectivityInsightsSubscriptionsBase[SubEventType, SubscriptionDetail]
 ):
     protocol: Literal[Protocol.NATS]
     protocolSettings: Optional[NATSSettings] = None
 
 
-type ConnectivityInsightsSubscription[SubscriptionEventType: str, SubscriptionDetail] = Annotated[
+type ConnectivityInsightsSubscription[SubEventType: str, SubscriptionDetail] = Annotated[
     Union[
-        HTTPSubscriptionResponse[SubscriptionEventType, SubscriptionDetail],
-        MQTTSubscriptionResponse[SubscriptionEventType, SubscriptionDetail],
-        AMQPSubscriptionResponse[SubscriptionEventType, SubscriptionDetail],
-        ApacheKafkaSubscriptionResponse[SubscriptionEventType, SubscriptionDetail],
-        NATSSubscriptionResponse[SubscriptionEventType, SubscriptionDetail],
+        HTTPSubscriptionResponse[SubEventType, SubscriptionDetail],
+        MQTTSubscriptionResponse[SubEventType, SubscriptionDetail],
+        AMQPSubscriptionResponse[SubEventType, SubscriptionDetail],
+        ApacheKafkaSubscriptionResponse[SubEventType, SubscriptionDetail],
+        NATSSubscriptionResponse[SubEventType, SubscriptionDetail],
     ],
     Field(discriminator="protocol"),
 ]

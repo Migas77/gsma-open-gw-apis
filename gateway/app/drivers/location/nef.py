@@ -1,11 +1,12 @@
 import logging
 from datetime import datetime
+from functools import cached_property
 from typing import Optional
 
 import httpx
 from fastapi import HTTPException
 
-from app.drivers.nef_auth import NEFAuth
+from app.drivers.nef_auth import get_nef_httpx_client, discover_nef_url
 from app.interfaces.location import LocationInterface
 from app.schemas.common import Point
 from app.schemas.device import Device
@@ -16,12 +17,11 @@ from app.settings import NEFSettings
 class NEFDriver(LocationInterface):
     def __init__(self, nef_settings: NEFSettings) -> None:
         super().__init__()
-        nef_auth = NEFAuth(
-            nef_settings.url, nef_settings.username, nef_settings.password
-        )
-        self.httpx_client = httpx.AsyncClient(
-            base_url=nef_settings.get_base_url(), auth=nef_auth
-        )
+        self.nef_settings = nef_settings
+
+    @cached_property
+    def httpx_client(self) -> httpx.AsyncClient:
+        return get_nef_httpx_client(nef_settings=self.nef_settings)
 
     async def retrieve_location(
         self, device: Device, max_age: Optional[int], max_surface: Optional[int]
@@ -42,7 +42,13 @@ class NEFDriver(LocationInterface):
         elif device.networkAccessIdentifier is not None:
             data["externalId"] = device.networkAccessIdentifier
 
-        url = "/3gpp-monitoring-event/v1/myNetApp/subscriptions"
+        url = discover_nef_url(
+            nef_settings=self.nef_settings,
+            fallback="/3gpp-monitoring-event/v1/{scsAsId}/subscriptions",
+            resource_name="Create Subscription",
+            api_name_filter="monitoring-event",
+            operation="POST",
+        ).format(scsAsId="myNetApp")
 
         logging.debug("Querying the NEF Emulator at %s with data %s", url, data)
 

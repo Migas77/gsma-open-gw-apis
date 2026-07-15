@@ -1,14 +1,23 @@
 gateway_public_url = "http://localhost:8000"
+gsma_apis_protected_by_capif = false
+
 
 [nef]
+# nef url is ignroed when using capif auth mode, as the url is obtained from capif during registration
 url = "http://localhost:8888"
 base_path = "/nef/api/v1/"
 
 gateway_af_id = "camara"
 gateway_notification_url = "http://host.docker.internal:8000"
 
+auth_mode = "capif"
 username = "admin@my-email.com"
 password = "pass"
+
+
+[capif_sdk]
+capif_username = "gsma_provider_invoker"
+capif_password = "password"
 
 
 [sms_otp]

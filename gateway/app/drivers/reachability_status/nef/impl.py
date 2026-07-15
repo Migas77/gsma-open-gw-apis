@@ -31,6 +31,7 @@ from app.schemas.reachability_status import (
 from app.schemas.subscriptions import (
     TerminationReason,
 )
+from app.drivers.nef_auth import discover_nef_url
 from app.utils.nef_driver_base import NefDriverBase
 from app.utils.subscription_driver_redis import SubscriptionDriverRedis
 
@@ -75,7 +76,13 @@ class NefReachabilityStatusInterface(
         sub = self.install_device_identifiers(sub, device)
 
         res = await self.httpx_client.post(
-            f"3gpp-monitoring-event/v1/{self.af_id}/subscriptions",
+            discover_nef_url(
+                nef_settings=self.nef_settings,
+                fallback="/3gpp-monitoring-event/v1/{scsAsId}/subscriptions",
+                resource_name="Create Subscription",
+                api_name_filter="monitoring-event",
+                operation="POST",
+            ).format(scsAsId=self.af_id),
             json=jsonable_encoder(sub, exclude_unset=True),
         )
 
@@ -170,7 +177,13 @@ class NefReachabilityStatusInterface(
             body = self.install_device_identifiers(body, device)
 
             res = await self.httpx_client.post(
-                f"3gpp-monitoring-event/v1/{self.af_id}/subscriptions",
+                discover_nef_url(
+                    nef_settings=self.nef_settings,
+                    fallback="/3gpp-monitoring-event/v1/{scsAsId}/subscriptions",
+                    resource_name="Create Subscription",
+                    api_name_filter="monitoring-event",
+                    operation="POST",
+                ).format(scsAsId=self.af_id),
                 json=jsonable_encoder(body, exclude_unset=True, exclude_none=True),
             )
 

@@ -1,8 +1,11 @@
 import uuid
+from contextlib import asynccontextmanager
 
+import fastapi
 from pydantic import TypeAdapter, ValidationError
 
 from app import dev_patches # noqa: F401
+import logging
 from typing import Any
 from collections.abc import Awaitable, Callable
 
@@ -12,13 +15,54 @@ from fastapi.requests import Request
 from fastapi.responses import Response
 
 from app import drivers, endpoints, probes
+from app.capif.invoker import capif_invoker
+from app.capif.deps import get_nef_capif_token
 from app.exception_handlers import install_exception_handlers
 from app.exceptions import BadRequest
 from app.schemas.common import XCorrelator
+from app.settings import NEFAuthMode, settings
 
+# Remove OpenCAPIF SDK logging file handlers from root
+root_logger = logging.getLogger()
+root_logger.handlers = [
+    h for h in root_logger.handlers
+    if not (
+        isinstance(h, logging.FileHandler) and
+        h.baseFilename.endswith(("sdk_logs.log", "builder_logs.log"))
+    )
+]
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if settings.nef.auth_mode == NEFAuthMode.CAPIF:
+        capif_invoker.startup()
+
+    yield
+
+    if settings.nef.auth_mode == NEFAuthMode.CAPIF:
+        capif_invoker.shutdown()
+
+dependencies = []
+if settings.nef.auth_mode == NEFAuthMode.CAPIF:
+    dependencies.append(Depends(get_nef_capif_token))
+if settings.gsma_apis_protected_by_capif:
+    # TODO add method here
+    pass
 
 app = FastAPI(
+    lifespan=lifespan,
+    dependencies=dependencies,
     separate_input_output_schemas=False
+)
+
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # or ["*"] for dev
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(probes.router)

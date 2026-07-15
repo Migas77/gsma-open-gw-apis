@@ -12,6 +12,7 @@ UNIT_TO_MILLISECONDS = {
     TimeUnitEnum.Nanoseconds: 1e-6,
 }
 
+# TODO: this conversion is useless, converts using same base unit
 _CAMARA_RATE_UNIT_TO_BASE = {
     RateUnitEnum.Bps: 1,
     RateUnitEnum.Kbps: 1_000,

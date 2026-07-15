@@ -1,26 +1,26 @@
+from functools import cached_property
+
 import httpx
 import logging
 
 from pydantic import AnyUrl
 
-from app.drivers.nef_auth import NEFAuth
 from app.exceptions import ResourceNotFound
 from app.schemas.nef_schemas.analytics_exposure import Gpsi
 from app.settings import NEFSettings
 from app.schemas.device import Device
+from app.drivers.nef_auth import get_nef_httpx_client
 from app.schemas.nef_schemas.monitoringevent import MonitoringEventSubscription
 
 
 class NefDriverBase:
     def __init__(self, nef_settings: NEFSettings) -> None:
-        nef_auth = NEFAuth(
-            nef_settings.url, nef_settings.username, nef_settings.password
-        )
-        self.httpx_client = httpx.AsyncClient(
-            base_url=nef_settings.get_base_url(), auth=nef_auth
-        )
-
+        self.nef_settings = nef_settings
         self.af_id = nef_settings.gateway_af_id
+
+    @cached_property
+    def httpx_client(self) -> httpx.AsyncClient:
+        return get_nef_httpx_client(nef_settings=self.nef_settings)
 
     def install_device_identifiers(
         self, sub: MonitoringEventSubscription, device: Device

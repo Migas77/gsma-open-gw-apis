@@ -60,7 +60,7 @@ class SubscriptionDriverBase[NotificationEventType: str, CloudEventData]:
                 headers=headers,
             )
             if response.is_error:
-                LOG.error("Error sending cloud event to %s: HTTP %s", response.url, response.status_code)
+                LOG.error("Error sending cloud event to %s: HTTP %s %s", response.url, response.status_code, response.content)
         except httpx.TimeoutException:
             LOG.error("Timeout while sending notification to sink %s", sink)
         except httpx.RequestError as e:

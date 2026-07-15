@@ -22,6 +22,7 @@ from app.schemas.nef_schemas.analytics_exposure import AnalyticsExposureSubsc, A
     ReportingInformation, NotificationMethod
 from app.schemas.subscriptions import TerminationReason
 
+from app.drivers.nef_auth import discover_nef_url
 from app.settings import NEFConnectivityInsightsSubscriptionsSettings
 from app.utils.nef_driver_base import NefDriverBase
 from app.utils.subscription_driver_redis import SubscriptionDriverRedis
@@ -102,7 +103,13 @@ class NefConnectivityInsightsSubscriptionsInterface(
             )
 
             res = await self.httpx_client.post(
-                "/3gpp-analyticsexposure/v1/{afId}/subscriptions".format(afId=self.af_id),
+                discover_nef_url(
+                    nef_settings=self.nef_settings,
+                    fallback="/3gpp-analyticsexposure/v1/{afId}/subscriptions",
+                    resource_name="Create Subscription",
+                    api_name_filter="analyticsexposure",
+                    operation="POST",
+                ).format(afId=self.af_id),
                 json=jsonable_encoder(body.model_dump(exclude_none=True)),
             )
 
