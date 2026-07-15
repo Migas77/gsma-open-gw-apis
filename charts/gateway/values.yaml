@@ -2,8 +2,12 @@ replicaCount: 1
 
 image:
   repository: atnog-harbor.av.it.pt/gsma-open-gw-apis/gateway
-  pullPolicy: IfNotPresent
-  tag: ""
+  # run-docker-build.sh only ever pushes `latest` (no per-version tag), so default
+  # to that instead of falling back to .Chart.AppVersion, which is never pushed.
+  # Always (not IfNotPresent) because `latest` is mutable - the node would
+  # otherwise keep reusing whatever it already cached under that tag.
+  pullPolicy: Always
+  tag: "latest"
 
 imagePullSecrets: []
 
@@ -61,7 +65,55 @@ nefSecret: {}
 #  passwordKey: password
 
 gatewayConfig:
-  gateway_public_url: "http://localhost:8000"
+  # Must be an externally-reachable address for the gateway (used to build the
+  # CAPIF publish URL and NEF notification/callback URLs). It also can't be a
+  # bare hostname like "localhost" - CAPIF core validates aefProfiles.*.fqdn
+  # against a dotted-domain regex, so a plain IP (parsed as ipv4Addr instead
+  # of fqdn) is used here instead, same as NEF_emulator's NGINX_HOST.
+  gateway_public_url: "https://10.255.28.207"  # TO BE REMOVED LATER
+
+# CAPIF integration.
+# The gateway generates its onboarding certificates at runtime under
+# app/capif/certificates/<capif.username>/. Since there's no shared
+# filesystem across nodes by default, certs are shared via a hostPath
+# volume - which means the pod MUST land on the same node across restarts.
+# Set .Values.nodeSelector to pin it there (e.g. a single-node/dev cluster).
+capif:
+  enabled: true
+  # Offboard + unpublish from CAPIF core on pod shutdown (SIGTERM), e.g. on
+  # helm uninstall/rollout - so CAPIF core doesn't accumulate stale
+  # registrations across reinstalls (see the "Already registered service
+  # with same api name" 403 this caused before).
+  cleanupOnShutdown: true
+  hostPath: /mnt/gateway-capif-certs
+  host: capifcore
+  registerHost: capifcore
+  httpsPort: "443"
+  registerPort: "8084"
+  username: gsma_provider_invoker
+  # password should be overridden with --set capif.password=... or a values override file, not committed here
+  password: password
+
+# Nginx reverse proxy (TLS termination + mTLS client-cert check required by CAPIF)
+nginx:
+  enabled: true
+  name: nginx
+  deployment:
+    image: ghcr.io/migas77/nginx-gateway:latest
+    ports:
+      - containerPort: 80
+      - containerPort: 443
+  service:
+    type: LoadBalancer
+    ports:
+      - name: http
+        port: 8080
+        targetPort: 80
+        protocol: TCP
+      - name: https
+        port: 443
+        targetPort: 443
+        protocol: TCP
 
 redis:
   auth:

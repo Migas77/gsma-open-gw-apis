@@ -21,6 +21,10 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
+      hostAliases:                # TO BE REMOVED LATER
+      - ip: "10.255.28.183"       # TO BE REMOVED LATER
+        hostnames:                # TO BE REMOVED LATER
+        - "capifcore"             # TO BE REMOVED LATER
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -29,6 +33,17 @@ spec:
       {{- with .Values.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.capif.enabled }}
+      initContainers:
+      # Populates/prepares the shared hostPath directory (permissions) before
+      # the gateway writes its CAPIF onboarding certs into it at startup.
+      - name: prepare-capif-certs-dir
+        image: busybox
+        command: [ 'sh', '-c', 'mkdir -p /capif-certs && chmod -R 0777 /capif-certs' ]
+        volumeMounts:
+        - name: capif-certs
+          mountPath: /capif-certs
       {{- end }}
       containers:
         - name: {{ .Chart.Name }}
@@ -46,11 +61,36 @@ spec:
             - name: GATEWAY_REDIS__URL
               value: "redis://{{ printf "%s-headless" (include "common.names.fullname" .Subcharts.redis) }}"
 
+            {{- if .Values.redis.auth.enabled }}
             - name: GATEWAY_REDIS__PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ template "redis.secretName" .Subcharts.redis }}
                   key: {{ template "redis.secretPasswordKey" .Subcharts.redis }}
+            {{- end }}
+
+            {{- if .Values.capif.enabled }}
+            # CAPIF
+            - name: GATEWAY_GSMA_APIS_PROTECTED_BY_CAPIF
+              value: {{ .Values.capif.enabled | quote }}
+            - name: GATEWAY_CAPIF_SDK__CLEANUP_ON_SHUTDOWN
+              value: {{ .Values.capif.cleanupOnShutdown | quote }}
+            - name: GATEWAY_CAPIF_SDK__CAPIF_HOST
+              value: {{ .Values.capif.host | quote }}
+            - name: GATEWAY_CAPIF_SDK__REGISTER_HOST
+              value: {{ .Values.capif.registerHost | quote }}
+            - name: GATEWAY_CAPIF_SDK__CAPIF_HTTPS_PORT
+              value: {{ .Values.capif.httpsPort | quote }}
+            - name: GATEWAY_CAPIF_SDK__CAPIF_REGISTER_PORT
+              value: {{ .Values.capif.registerPort | quote }}
+            - name: GATEWAY_CAPIF_SDK__CAPIF_USERNAME
+              value: {{ .Values.capif.username | quote }}
+            - name: GATEWAY_CAPIF_SDK__CAPIF_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gsma-open-gateway.fullname" . }}-capif
+                  key: CAPIF_PASSWORD
+            {{- end }}
 
             {{- if .Values.gatewayConfig }}
             {{- if .Values.gatewayConfig.nef }}
@@ -111,6 +151,10 @@ spec:
               subPath: "config.toml"
               mountPath: "/app/config.toml"
               readOnly: true
+            {{- if .Values.capif.enabled }}
+            - name: capif-certs
+              mountPath: /app/app/capif/certificates
+            {{- end }}
             {{- if .Values.extraVolumeMounts }}
             {{- toYaml .Values.extraVolumeMounts | nindent 12 }}
             {{- end }}
@@ -118,6 +162,12 @@ spec:
         - name: config
           configMap:
             name: {{ include "gsma-open-gateway.fullname" . }}-config
+        {{- if .Values.capif.enabled }}
+        - name: capif-certs
+          hostPath:
+            path: {{ .Values.capif.hostPath }}
+            type: DirectoryOrCreate
+        {{- end }}
         {{- if .Values.extraVolumes }}
         {{- toYaml .Values.extraVolumes | nindent 8 }}
         {{- end }}

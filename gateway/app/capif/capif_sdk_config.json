@@ -3,8 +3,8 @@
     "register_host": "capifcore",
     "capif_https_port": "443",
     "capif_register_port": "8084",
-    "capif_username": "gsma_provider_invoker",
-    "capif_password": "password",
+    "capif_username": null,
+    "capif_password": null,
     "debug_mode": "True",
     "invoker": {
         "invoker_folder": "invoker",
@@ -15,13 +15,13 @@
             "port": ""
         },
         "cert_generation": {
-            "csr_common_name": "apfExpapfoser1502",
-            "csr_organizational_unit": "test_app_ou",
-            "csr_organization": "test_app_o",
-            "csr_locality": "Madrid",
-            "csr_state_or_province_name": "Madrid",
-            "csr_country_name": "ES",
-            "csr_email_address": "test@example.com"
+            "csr_common_name": "gsma-open-gateway-invoker",
+            "csr_organizational_unit": "gsma-open-gateway",
+            "csr_organization": "IT-Aveiro",
+            "csr_locality": "Aveiro",
+            "csr_state_or_province_name": "Aveiro",
+            "csr_country_name": "PT",
+            "csr_email_address": "gateway-invoker@example.com"
         },
         "discover_filter": {
             "api-name": "",
@@ -58,19 +58,19 @@
         }
     },
     "provider": {
-        "provider_folder": "",
+        "provider_folder": "app/capif/certificates",
         "supported_features": "",
         "cert_generation": {
-            "csr_common_name": "",
-            "csr_organizational_unit": "",
-            "csr_organization": "",
-            "csr_locality": "",
-            "csr_state_or_province_name": "",
-            "csr_country_name": "",
-            "csr_email_address": ""
+            "csr_common_name": "gsma-open-gateway-provider",
+            "csr_organizational_unit": "gsma-open-gateway-provider",
+            "csr_organization": "IT-Aveiro",
+            "csr_locality": "Aveiro",
+            "csr_state_or_province_name": "Aveiro",
+            "csr_country_name": "PT",
+            "csr_email_address": "gateway-provider@example.com"
         },
-        "apfs": "",
-        "aefs": "",
+        "apfs": "1",
+        "aefs": "1",
         "publish_req": {
             "service_api_id": "",
             "publisher_apf_id": "",
@@ -104,7 +104,7 @@
             }
         },
         "log": {
-            "apiName": "",
+            "apiName": "gsma-open-gateway",
             "apiVersion": "",
             "resourceName": "",
             "uri": "",

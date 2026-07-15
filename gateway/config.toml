@@ -1,4 +1,6 @@
 gateway_public_url = "http://localhost:8000"
+# when true, the gateway onboards itself as a CAPIF provider, publishes the CAMARA APIs to CAPIF,
+# and requires callers of those APIs to present a valid CAPIF-issued invoker access token
 gsma_apis_protected_by_capif = false
 
 
@@ -18,6 +20,8 @@ password = "pass"
 [capif_sdk]
 capif_username = "gsma_provider_invoker"
 capif_password = "password"
+# offboard the CAPIF provider and unpublish its services on shutdown (useful for dev/testing so re-onboarding doesn't hit "already registered" errors)
+cleanup_on_shutdown = false
 
 
 [sms_otp]

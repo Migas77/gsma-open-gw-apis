@@ -16,7 +16,9 @@ from fastapi.responses import Response
 
 from app import drivers, endpoints, probes
 from app.capif.invoker import capif_invoker
-from app.capif.deps import get_nef_capif_token
+from app.capif.provider import capif_provider
+from app.capif.logging import CAPIFLoggingMiddleware
+from app.capif.deps import get_nef_capif_token, verify_capif_invoker_token
 from app.exception_handlers import install_exception_handlers
 from app.exceptions import BadRequest
 from app.schemas.common import XCorrelator
@@ -34,26 +36,30 @@ root_logger.handlers = [
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if settings.nef.auth_mode == NEFAuthMode.CAPIF:
+    if settings.nef is not None and settings.nef.auth_mode == NEFAuthMode.CAPIF:
         capif_invoker.startup()
+    if settings.gsma_apis_protected_by_capif:
+        capif_provider.startup(app)
 
     yield
 
-    if settings.nef.auth_mode == NEFAuthMode.CAPIF:
+    if settings.nef is not None and settings.nef.auth_mode == NEFAuthMode.CAPIF:
         capif_invoker.shutdown()
+    if settings.gsma_apis_protected_by_capif:
+        capif_provider.shutdown()
 
 dependencies = []
-if settings.nef.auth_mode == NEFAuthMode.CAPIF:
+if settings.nef is not None and settings.nef.auth_mode == NEFAuthMode.CAPIF:
     dependencies.append(Depends(get_nef_capif_token))
-if settings.gsma_apis_protected_by_capif:
-    # TODO add method here
-    pass
 
 app = FastAPI(
     lifespan=lifespan,
     dependencies=dependencies,
     separate_input_output_schemas=False
 )
+
+if settings.gsma_apis_protected_by_capif:
+    app.add_middleware(CAPIFLoggingMiddleware)
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -66,7 +72,10 @@ app.add_middleware(
 )
 
 app.include_router(probes.router)
-app.include_router(endpoints.router)
+app.include_router(
+    endpoints.router,
+    dependencies=[Depends(verify_capif_invoker_token)] if settings.gsma_apis_protected_by_capif else [],
+)
 app.include_router(drivers.router, include_in_schema=False)
 
 install_exception_handlers(app)

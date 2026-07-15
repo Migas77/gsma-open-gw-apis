@@ -464,6 +464,7 @@ class CAPIFSDKSettings(BaseModel):
     capif_username: Optional[str] = None
     capif_password: Optional[str] = None
     capif_callback_url: str = "http://your-callback-host/callback/"
+    cleanup_on_shutdown: bool = False
 
     @model_validator(mode="after")
     def fill_json_opencapif_sdk_config(self) -> "CAPIFSDKSettings":

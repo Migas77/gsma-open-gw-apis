@@ -1,0 +1,16 @@
+{{- if .Values.nginx.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "gsma-open-gateway.fullname" . }}-{{ .Values.nginx.name }}
+  labels:
+    {{- include "gsma-open-gateway.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.nginx.service.type }}
+  {{- if .Values.nginx.service.ports }}
+  ports:
+    {{- toYaml .Values.nginx.service.ports | nindent 4 }}
+  {{- end }}
+  selector:
+    app: {{ include "gsma-open-gateway.fullname" . }}-{{ .Values.nginx.name }}
+{{- end }}

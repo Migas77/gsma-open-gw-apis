@@ -50,6 +50,18 @@ class InternalServerError(ApiException):
         super().__init__(message=message)
 
 
+class Unauthorized(ApiException):
+    def __init__(
+        self,
+        message: str = "Request not authenticated due to missing, invalid, or expired credentials.",
+    ) -> None:
+        super().__init__(
+            status=401,
+            code="UNAUTHENTICATED",
+            message=message,
+        )
+
+
 class UnsupportedIdentifier(ApiException):
     def __init__(self) -> None:
         super().__init__(

@@ -1,9 +1,45 @@
 import logging
 
 import jwt
+from fastapi import Request
+from OpenSSL import crypto
 
 from app.capif.invoker import capif_invoker
-from app.exceptions import InternalServerError
+from app.capif.provider import capif_provider
+from app.exceptions import InternalServerError, Unauthorized
+
+
+def _extract_public_key(cert_path: str) -> bytes:
+    with open(cert_path, "r") as f:
+        cert = f.read()
+
+    crt_obj = crypto.load_certificate(crypto.FILETYPE_PEM, cert)
+    pub_key_obj = crt_obj.get_pubkey()
+    return crypto.dump_publickey(crypto.FILETYPE_PEM, pub_key_obj)
+
+
+def verify_capif_invoker_token(request: Request) -> None:
+    """
+    Dependency function that verifies incoming requests to the CAMARA (GSMA Open Gateway)
+    APIs carry a valid access token issued by CAPIF for an onboarded API invoker.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.removeprefix("Bearer ") if auth_header.startswith("Bearer ") else None
+    if token is None:
+        raise Unauthorized()
+
+    if capif_provider.capif_cert_pem_path is None:
+        logging.error("Internal error: CAPIF provider is not initialized")
+        raise InternalServerError()
+
+    try:
+        jwt.decode(
+            token,
+            _extract_public_key(capif_provider.capif_cert_pem_path),
+            algorithms=["RS256"],
+        )
+    except jwt.PyJWTError:
+        raise Unauthorized()
 
 
 def get_nef_capif_token(force_refresh: bool = False) -> str:
