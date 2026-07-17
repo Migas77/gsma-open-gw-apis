@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: atnog-harbor.av.it.pt/gsma-open-gw-apis/gateway
+  repository: ghcr.io/migas77/gateway
   # run-docker-build.sh only ever pushes `latest` (no per-version tag), so default
   # to that instead of falling back to .Chart.AppVersion, which is never pushed.
   # Always (not IfNotPresent) because `latest` is mutable - the node would
