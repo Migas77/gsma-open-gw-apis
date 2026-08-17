@@ -8,7 +8,7 @@ The gateway generates its onboarding certificates at runtime under `app/capif/ce
 
 Also set `capif.host`, `capif.registerHost`, `capif.httpsPort`, `capif.registerPort`, `capif.username` and `capif.password` to match your CAPIF core deployment.
 
-This is independent of `gatewayConfig.nef.auth_mode: capif`, which controls whether the gateway onboards as a CAPIF *invoker* to reach NEF — both can be enabled at once and share the same `capif.*` connection settings (`host`, `registerHost`, `httpsPort`, `registerPort`), but only `capif.enabled` (the provider side) needs the hostPath volume, since invoker certs currently aren't persisted.
+This is independent of `gatewayConfig.nef.auth_mode: capif`, which controls whether the gateway onboards as a CAPIF *invoker* to reach NEF — both can be enabled at once and share the same `capif.*` connection settings (`host`, `registerHost`, `httpsPort`, `registerPort`, `username`, `password`, and the `ingressIP` hostAlias). Either one alone is enough to render those settings and the credentials Secret; only `capif.enabled` (the provider side) additionally gets the hostPath volume, since the SDK writes invoker certs to a separate non-persisted folder.
 
 ### mTLS enforcement (nginx)
 

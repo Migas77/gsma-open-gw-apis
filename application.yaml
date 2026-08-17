@@ -1,0 +1,89 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gsma-open-gateway
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: oci://ghcr.io/migas77/gsma-open-gateway
+    chart: gsma-open-gateway
+    targetRevision: "0.2.5"
+    helm:
+      parameters:
+        - name: image.repository
+          value: "ghcr.io/migas77/gateway"
+        - name: image.tag
+          value: "0.0.7"
+        - name: capif.enabled
+          value: "%1$s"
+
+        # NEF_emulator's FIRST_SUPERUSER / backend.password.
+        - name: nefSecret.create
+          value: "true"
+        - name: nefSecret.username
+          value: "admin@my-email.com"
+        - name: nefSecret.password
+          value: "pass"
+
+        # Port must be explicit and match nginx.service.ports[1].port - see the
+        # gateway_public_url comment in charts/gateway/values.yaml.
+        - name: gatewayConfig.gateway_public_url
+          value: "https://10.255.28.207:8443"
+        - name: gatewayConfig.gsma_apis_protected_by_capif
+          value: "%1$s"
+
+        - name: gatewayConfig.nef.auth_mode
+          value: "%2$s"
+        - name: gatewayConfig.nef.url
+          value: "https://%3$s-nginx.nef.svc.cluster.local:443"
+        - name: gatewayConfig.nef.base_path
+          value: "/nef/api/v1/"
+        - name: gatewayConfig.nef.gateway_af_id
+          value: "camara"
+
+        - name: gatewayConfig.sms_otp.sms_backend
+          value: "mock"
+        - name: gatewayConfig.sms_otp.otp_backend
+          value: "redis"
+        - name: gatewayConfig.sms_otp.smsc_url
+          value: "http://localhost:7090"
+        - name: gatewayConfig.sms_otp.sender_id
+          value: "1234"
+
+        - name: gatewayConfig.qos_profiles.backend
+          value: "nef"
+        - name: gatewayConfig.location.backend
+          value: "nef"
+        - name: gatewayConfig.qod_provisioning.backend
+          value: "nef"
+        - name: gatewayConfig.qod.backend
+          value: "nef"
+        - name: gatewayConfig.geofencing.backend
+          value: "nef"
+        - name: gatewayConfig.reachability_status.backend
+          value: "nef"
+        - name: gatewayConfig.roaming_status.backend
+          value: "nef"
+        - name: gatewayConfig.application_profiles.backend
+          value: "redis"
+
+        - name: gatewayConfig.connectivity_insights_subscriptions.backend
+          value: "nef"
+        - name: gatewayConfig.connectivity_insights_subscriptions.offset_period
+          value: "-5"
+        - name: gatewayConfig.connectivity_insights_subscriptions.temporal_gran_size
+          value: "5"
+        - name: gatewayConfig.connectivity_insights_subscriptions.rep_period
+          value: "5"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: camara
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

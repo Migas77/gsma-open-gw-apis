@@ -6,7 +6,7 @@ from functools import cached_property
 import httpx
 
 from app.exceptions import ResourceNotFound
-from app.drivers.nef_auth import get_nef_httpx_client, discover_nef_url
+from app.drivers.nef_auth import get_nef_httpx_client, discover_nef_url, resolve_nef_url
 from app.interfaces.qodProvisioning import (
     ProvisioningConflict,
     QoDProvisioningInterface,
@@ -164,7 +164,9 @@ class NEFQoDProvisioningInterface(QoDProvisioningInterface):
         if sub_info.statusInfo == StatusInfo.DELETE_REQUESTED:
             return sub_info
 
-        res = await self.httpx_client.delete(nef_id)
+        res = await self.httpx_client.delete(
+            resolve_nef_url(self.httpx_client, nef_id)
+        )
 
         if res.status_code == 404:
             raise ResourceNotFound()

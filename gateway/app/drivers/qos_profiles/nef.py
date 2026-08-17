@@ -5,7 +5,7 @@ import math
 import httpx
 from pydantic import TypeAdapter
 
-from app.drivers.nef_auth import get_nef_httpx_client, _get_nef_auth
+from app.drivers.nef_auth import get_nef_httpx_client
 from app.interfaces.qos_profiles import QoSProfilesInterface
 from app.schemas.nef import NEFNamedQoSProfile, NEFQoSProfile
 from app.schemas.qos_profiles import (
@@ -67,15 +67,22 @@ class NefQoSProfilesInterface(QoSProfilesInterface):
     def __init__(self, nef_settings: NEFSettings) -> None:
         super().__init__()
 
-        nef_auth = _get_nef_auth(nef_settings)
-        self.httpx_client = httpx.AsyncClient(
-            base_url=str(nef_settings.url), auth=nef_auth
-        )
+        self.nef_settings = nef_settings
+
+    @cached_property
+    def httpx_client(self) -> httpx.AsyncClient:
+        return get_nef_httpx_client(nef_settings=self.nef_settings)
+
+    def _qos_info_url(self, path: str) -> httpx.URL:
+        # qosInfo is served by NEF's own API at the host root (/api/v1/...), not
+        # under the 3GPP base path carried by the client's base_url
+        # (/nef/api/v1/...), so build an absolute url against the same host.
+        return self.httpx_client.base_url.join(f"/api/v1/qosInfo{path}")
 
     async def get_qos_profiles(self, req: QosProfileDeviceRequest) -> List[QosProfile]:
         if req.name is not None:
             res = await self.httpx_client.get(
-                f"/api/v1/qosInfo/qosCharacteristics/{req.name}"
+                self._qos_info_url(f"/qosCharacteristics/{req.name}")
             )
 
             if res.status_code == 404:
@@ -89,7 +96,7 @@ class NefQoSProfilesInterface(QoSProfilesInterface):
             nef_profile = NEFQoSProfile.model_validate_json(res.content)
             return [_convert_nef_profile(req.name, nef_profile)]
         else:
-            res = await self.httpx_client.get("/api/v1/qosInfo/qosCharacteristics")
+            res = await self.httpx_client.get(self._qos_info_url("/qosCharacteristics"))
 
             if not res.is_success:
                 raise Exception(

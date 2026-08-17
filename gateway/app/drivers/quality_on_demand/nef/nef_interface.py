@@ -6,7 +6,7 @@ import uuid
 
 import httpx
 
-from app.drivers.nef_auth import get_nef_httpx_client, discover_nef_url
+from app.drivers.nef_auth import get_nef_httpx_client, discover_nef_url, resolve_nef_url
 from app.exceptions import (
     InternalServerError,
     ResourceNotFound,
@@ -174,7 +174,9 @@ class NEFQoDInterface(QoDInterface):
         key = f"{_prefix_gateway_nef}:{id}"
         nef_id = await self.redis.get(key)
 
-        res = await self.httpx_client.delete(nef_id)
+        res = await self.httpx_client.delete(
+            resolve_nef_url(self.httpx_client, nef_id)
+        )
 
         if res.status_code == 404:
             raise ResourceNotFound()

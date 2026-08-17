@@ -9,7 +9,7 @@ from app.exceptions import ResourceNotFound
 from app.schemas.nef_schemas.analytics_exposure import Gpsi
 from app.settings import NEFSettings
 from app.schemas.device import Device
-from app.drivers.nef_auth import get_nef_httpx_client
+from app.drivers.nef_auth import get_nef_httpx_client, resolve_nef_url
 from app.schemas.nef_schemas.monitoringevent import MonitoringEventSubscription
 
 
@@ -45,7 +45,9 @@ class NefDriverBase:
                                "One of the following must be provided and valid: phoneNumber, networkAccessIdentifier")
 
     async def delete_nef_subscription(self, sub_url: AnyUrl | str) -> None:
-        res = await self.httpx_client.delete(str(sub_url))
+        res = await self.httpx_client.delete(
+            resolve_nef_url(self.httpx_client, sub_url)
+        )
 
         if res.status_code == 404:
             logging.warning("Subscription not found")

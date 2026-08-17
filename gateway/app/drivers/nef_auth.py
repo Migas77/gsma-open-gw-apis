@@ -6,7 +6,7 @@ from app.capif.invoker import capif_invoker
 from app.settings import NEFAuthMode
 
 import httpx
-from pydantic import AnyHttpUrl
+from pydantic import AnyHttpUrl, AnyUrl
 
 if TYPE_CHECKING:
     from app.settings import NEFSettings
@@ -113,6 +113,22 @@ def get_nef_httpx_client(nef_settings: "NEFSettings") -> httpx.AsyncClient:
         auth=_get_nef_auth(nef_settings),
         verify=_get_nef_ssl_context(nef_settings)
     )
+
+def resolve_nef_url(client: httpx.AsyncClient, url: AnyUrl | str) -> httpx.URL:
+    """
+    Re-target a NEF-provided absolute URL (e.g. a subscription `self` link) at the
+    origin the gateway actually reaches NEF on.
+
+    NEF builds `self` links from the request URL it observes (`f"{http_request.url}/{id}"`),
+    and its reverse proxy forwards neither `Host` nor `X-Forwarded-*`. The resulting link
+    therefore carries NEF's internal upstream host/port/scheme, which is not reachable from
+    the gateway. The path is still correct (the proxy does not rewrite it), so only the
+    origin is replaced. Where NEF is deployed so that its `self` links already point at the
+    reachable origin, this is a no-op.
+    """
+    target = httpx.URL(str(url))
+    base = client.base_url
+    return target.copy_with(scheme=base.scheme, host=base.host, port=base.port)
 
 def discover_nef_url(*, nef_settings: "NEFSettings", fallback: str, resource_name: str, api_name_filter: str, operation: str) -> str:
     """

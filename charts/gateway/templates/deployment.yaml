@@ -24,7 +24,7 @@ spec:
       # capif.host is the hostname CAPIF's nginx serves its cert for, and it is
       # not resolvable by anything (no DNS zone, not a Service name) - map it
       # to capif.ingressIP here, as CAPIF itself does for its register pod.
-      {{- if and .Values.capif.enabled .Values.capif.ingressIP }}
+      {{- if and (include "gsma-open-gateway.capifRequired" .) .Values.capif.ingressIP }}
       hostAliases:
       - ip: {{ .Values.capif.ingressIP | quote }}
         hostnames:
@@ -75,9 +75,13 @@ spec:
             {{- end }}
 
             {{- if .Values.capif.enabled }}
-            # CAPIF
+            # CAPIF provider (publishes the CAMARA APIs, requires invoker tokens)
             - name: GATEWAY_GSMA_APIS_PROTECTED_BY_CAPIF
               value: {{ .Values.capif.enabled | quote }}
+            {{- end }}
+
+            {{- if (include "gsma-open-gateway.capifRequired" .) }}
+            # CAPIF connection settings, shared by the provider and invoker sides
             - name: GATEWAY_CAPIF_SDK__CLEANUP_ON_SHUTDOWN
               value: {{ .Values.capif.cleanupOnShutdown | quote }}
             - name: GATEWAY_CAPIF_SDK__CAPIF_HOST
@@ -106,18 +110,19 @@ spec:
             {{- end }}
             {{- end }}
 
-            {{- if .Values.nefSecret.name }}
+            {{- $nefSecretName := include "gsma-open-gateway.nefSecretName" . }}
+            {{- if $nefSecretName }}
             - name: GATEWAY_NEF__PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.nefSecret.name }}
+                  name: {{ $nefSecretName }}
                   key: {{ .Values.nefSecret.passwordKey }}
 
             {{- if .Values.nefSecret.usernameKey }}
             - name: GATEWAY_NEF__USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.nefSecret.name }}
+                  name: {{ $nefSecretName }}
                   key: {{ .Values.nefSecret.usernameKey }}
             {{- end }}
 

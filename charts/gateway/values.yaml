@@ -59,10 +59,15 @@ nodeSelector: {}
 tolerations: []
 affinity: {}
 
-nefSecret: {}
-#  name: nef-emulator-creds
-#  usernameKey: username
-#  passwordKey: password
+# NEF basic-auth credentials: created by the chart, or read from an existing
+# Secret in this namespace when create is false.
+nefSecret:
+  create: false
+  username: ""
+  password: ""
+  name: ""
+  usernameKey: username
+  passwordKey: password
 
 gatewayConfig:
   # Must be an externally-reachable address for the gateway (used to build the
@@ -70,7 +75,13 @@ gatewayConfig:
   # bare hostname like "localhost" - CAPIF core validates aefProfiles.*.fqdn
   # against a dotted-domain regex, so a plain IP (parsed as ipv4Addr instead
   # of fqdn) is used here instead, same as NEF_emulator's NGINX_HOST.
-  gateway_public_url: "https://10.255.28.207"  # TO BE REMOVED LATER
+  # The port MUST be explicit and MUST be nginx.service.ports[1].port (the mTLS
+  # TLS listener CAPIF invokers reach the AEF on) - same as NEF_emulator, which
+  # publishes https://{NGINX_HOST}:{NGINX_HTTPS}. The SDK's api_schema_translator
+  # captures the scheme as "https://" and compares it against "https", so a URL
+  # without a port always falls back to port 80 and every invoker then does a TLS
+  # handshake against the plain-HTTP listener ([SSL: WRONG_VERSION_NUMBER]).
+  gateway_public_url: "https://10.255.28.207:8443"  # TO BE REMOVED LATER
 
 # CAPIF integration.
 # The gateway generates its onboarding certificates at runtime under

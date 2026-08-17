@@ -60,3 +60,28 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Whether the gateway needs CAPIF connection settings (host, ports, credentials):
+true for the provider side (capif.enabled) and for the invoker side, where the
+gateway reaches NEF through the same CAPIF core (nef.auth_mode == "capif").
+Only the provider side needs the onboarding-cert volume, which stays gated on
+.Values.capif.enabled directly.
+*/}}
+{{- define "gsma-open-gateway.capifRequired" -}}
+{{- if or .Values.capif.enabled (eq (dig "nef" "auth_mode" "" (.Values.gatewayConfig | default dict)) "capif") -}}
+true
+{{- end -}}
+{{- end }}
+
+{{/*
+Secret holding the NEF basic-auth credentials: the chart-created one, or a
+pre-existing Secret in this namespace. Empty when neither is configured.
+*/}}
+{{- define "gsma-open-gateway.nefSecretName" -}}
+{{- if .Values.nefSecret.create -}}
+{{- printf "%s-nef" (include "gsma-open-gateway.fullname" .) -}}
+{{- else -}}
+{{- .Values.nefSecret.name -}}
+{{- end -}}
+{{- end }}

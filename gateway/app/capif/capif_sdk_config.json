@@ -3,8 +3,8 @@
     "register_host": "capifcore",
     "capif_https_port": "443",
     "capif_register_port": "8084",
-    "capif_username": null,
-    "capif_password": null,
+    "capif_username": "gsma_provider_invoker",
+    "capif_password": "password",
     "debug_mode": "True",
     "invoker": {
         "invoker_folder": "invoker",
