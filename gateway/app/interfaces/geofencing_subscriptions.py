@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Optional
 
 from app.schemas.device import Device
 from app.schemas.geofencing import Subscription, SubscriptionRequest
@@ -7,7 +8,7 @@ from app.schemas.geofencing import Subscription, SubscriptionRequest
 class GeofencingSubscriptionInterface(ABC):
     @abstractmethod
     async def create_subscription(
-        self, req: SubscriptionRequest, device: Device
+        self, req: SubscriptionRequest, device: Device, x_correlator: Optional[str] = None
     ) -> Subscription:
         pass
 

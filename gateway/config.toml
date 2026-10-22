@@ -12,7 +12,7 @@ base_path = "/nef/api/v1/"
 gateway_af_id = "camara"
 gateway_notification_url = "http://host.docker.internal:8000"
 
-auth_mode = "capif"
+auth_mode = "nef"
 username = "admin@my-email.com"
 password = "pass"
 

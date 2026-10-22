@@ -1,5 +1,6 @@
 import datetime
 import logging
+import time
 import uuid
 from functools import cached_property
 
@@ -63,7 +64,7 @@ class NEFQoDProvisioningInterface(QoDProvisioningInterface):
         return get_nef_httpx_client(nef_settings=self.nef_settings)
 
     async def create_provisioning(
-        self, req: TriggerProvisioning, device: Device
+        self, req: TriggerProvisioning, device: Device, x_correlator: str | None = None
     ) -> ProvisioningInfo:
         provisioning_id = uuid.uuid4()
 
@@ -92,16 +93,31 @@ class NEFQoDProvisioningInterface(QoDProvisioningInterface):
             phone_number = device.phoneNumber.lstrip("+")
             payload.gpsi = f"msisdn-{phone_number}"
 
+        nef_url = discover_nef_url(
+            nef_settings=self.nef_settings,
+            fallback="/3gpp-as-session-with-qos/v1/{scsAsId}/subscriptions",
+            resource_name="Create Subscription",
+            api_name_filter="as-session-with-qos",
+            operation="POST",
+        ).format(scsAsId=self.af_id)
+        nef_payload = payload.model_dump_json(exclude_unset=True)
+
+        t4 = time.perf_counter_ns()
         res = await self.httpx_client.post(
-            discover_nef_url(
-                nef_settings=self.nef_settings,
-                fallback="/3gpp-as-session-with-qos/v1/{scsAsId}/subscriptions",
-                resource_name="Create Subscription",
-                api_name_filter="as-session-with-qos",
-                operation="POST",
-            ).format(scsAsId=self.af_id),
-            content=payload.model_dump_json(exclude_unset=True),
+            nef_url,
+            content=nef_payload,
             headers={"Content-Type": "application/json"},
+        )
+        t5 = time.perf_counter_ns()
+
+        LOG.info(
+            'BENCHMARK: {"api": "NEF", "resource": "Create Subscription", '
+            '"filter": "as-session-with-qos", "op": "POST", "x_correlator": "%s", '
+            '"ue": "%s", "time_ns": %d, "status": %d}',
+            x_correlator,
+            device.phoneNumber or device.networkAccessIdentifier or device.ipv6Address,
+            t5 - t4,
+            res.status_code,
         )
 
         if res.status_code == 404:

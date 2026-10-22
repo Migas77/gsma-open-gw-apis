@@ -20,7 +20,7 @@ class ProvisioningConflict(ApiException):
 class QoDProvisioningInterface(ABC):
     @abstractmethod
     async def create_provisioning(
-        self, req: TriggerProvisioning, device: Device
+        self, req: TriggerProvisioning, device: Device, x_correlator: str | None = None
     ) -> ProvisioningInfo:
         pass
 

@@ -34,6 +34,9 @@ class CapifProvider:
 
         self.capif_cert_pem_path = os.path.join(self.provider.provider_folder, "capif_cert_server.pem")
 
+        from app.capif.deps import _extract_public_key
+        _extract_public_key(self.capif_cert_pem_path)
+
         # Onboarding and service publishing are two separate steps that can succeed
         # independently (e.g. a crash between the two) - so publishing must be
         # checked and (re)attempted on its own, not skipped just because the

@@ -22,7 +22,6 @@ async def create_subscription(
 
     subscription_detail = subscription_req.config.subscriptionDetail
     device = subscription_detail.device
-    print(device)
     if device.phoneNumber is None and device.networkAccessIdentifier is None:
         raise BadRequest("Device must be identified by phoneNumber or networkAccessIdentifier")
 

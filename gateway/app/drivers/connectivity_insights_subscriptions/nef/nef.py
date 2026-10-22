@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 from typing import override, Any, Optional
 
 from fastapi.encoders import jsonable_encoder
@@ -102,15 +103,27 @@ class NefConnectivityInsightsSubscriptionsInterface(
                 notifId=x_correlator
             )
 
-            res = await self.httpx_client.post(
-                discover_nef_url(
-                    nef_settings=self.nef_settings,
-                    fallback="/3gpp-analyticsexposure/v1/{afId}/subscriptions",
-                    resource_name="Create Subscription",
-                    api_name_filter="analyticsexposure",
-                    operation="POST",
-                ).format(afId=self.af_id),
-                json=jsonable_encoder(body.model_dump(exclude_none=True)),
+            nef_url = discover_nef_url(
+                nef_settings=self.nef_settings,
+                fallback="/3gpp-analyticsexposure/v1/{afId}/subscriptions",
+                resource_name="Create Subscription",
+                api_name_filter="analyticsexposure",
+                operation="POST",
+            ).format(afId=self.af_id)
+            nef_payload = jsonable_encoder(body.model_dump(exclude_none=True))
+
+            _bench_start = time.perf_counter_ns()
+            res = await self.httpx_client.post(nef_url, json=nef_payload)
+            _bench_time_ns = time.perf_counter_ns() - _bench_start
+
+            LOG.info(
+                'BENCHMARK: {"api": "NEF", "resource": "Create Subscription", '
+                '"filter": "analyticsexposure", "op": "POST", "x_correlator": "%s", '
+                '"ue": "%s", "time_ns": %d, "status": %d}',
+                x_correlator,
+                device.phoneNumber or device.networkAccessIdentifier,
+                _bench_time_ns,
+                res.status_code,
             )
 
             if not res.is_success:

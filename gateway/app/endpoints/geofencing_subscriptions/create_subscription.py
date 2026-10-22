@@ -1,7 +1,7 @@
 from http import HTTPStatus
 from typing import Annotated
 
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, Request
 
 from app.drivers.geofencing import GeofencingSubscriptionInterfaceDep
 from app.exceptions import ApiException, MissingDevice
@@ -13,6 +13,7 @@ router = APIRouter()
 
 @router.post("/subscriptions", response_model_exclude_unset=True)
 async def post_subscriptions(
+    request: Request,
     req: Annotated[SubscriptionRequest, Body()],
     geofencing_subscription_interface: GeofencingSubscriptionInterfaceDep,
 ) -> Subscription:
@@ -34,4 +35,6 @@ async def post_subscriptions(
             message="The identifier provided is not supported.",
         )
 
-    return await geofencing_subscription_interface.create_subscription(req, device)
+    return await geofencing_subscription_interface.create_subscription(
+        req, device, request.state.x_correlator
+    )

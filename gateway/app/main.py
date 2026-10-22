@@ -58,8 +58,9 @@ app = FastAPI(
     separate_input_output_schemas=False
 )
 
-if settings.gsma_apis_protected_by_capif:
-    app.add_middleware(CAPIFLoggingMiddleware)
+# CAPIF invocation logging disabled: middleware left unwired on purpose
+# if settings.gsma_apis_protected_by_capif:
+#     app.add_middleware(CAPIFLoggingMiddleware)
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -88,6 +89,8 @@ _x_correlator_type_adapter = TypeAdapter(XCorrelator)
 async def add_correlation_header(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
+    logging.info("DELAY: Request arrived (path=%s)", request.url.path)
+
     x_correlator_header = request.headers.get("x-correlator")
 
     try:
@@ -102,6 +105,7 @@ async def add_correlation_header(
     response = await call_next(request)
     response.headers["x-correlator"] = x_correlator
 
+    logging.info("DELAY: Request responded (path=%s)", request.url.path)
     return response
 
 

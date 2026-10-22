@@ -10,15 +10,25 @@ spec:
   source:
     repoURL: oci://ghcr.io/migas77/gsma-open-gateway
     chart: gsma-open-gateway
-    targetRevision: "0.2.5"
+    targetRevision: "0.2.7"
     helm:
       parameters:
         - name: image.repository
           value: "ghcr.io/migas77/gateway"
         - name: image.tag
-          value: "0.0.7"
+          value: "0.0.15"
         - name: capif.enabled
           value: "%1$s"
+
+        # --- Gateway container resources (generous) ---
+        - name: resources.requests.cpu
+          value: "500m"
+        - name: resources.requests.memory
+          value: "512Mi"
+        - name: resources.limits.cpu
+          value: "2"
+        - name: resources.limits.memory
+          value: "1Gi"
 
         # NEF_emulator's FIRST_SUPERUSER / backend.password.
         - name: nefSecret.create

@@ -1,4 +1,6 @@
 import logging
+from datetime import datetime, timezone
+from functools import lru_cache
 
 import jwt
 from fastapi import Request
@@ -9,10 +11,10 @@ from app.capif.provider import capif_provider
 from app.exceptions import InternalServerError, Unauthorized
 
 
+@lru_cache(maxsize=10)
 def _extract_public_key(cert_path: str) -> bytes:
     with open(cert_path, "r") as f:
         cert = f.read()
-
     crt_obj = crypto.load_certificate(crypto.FILETYPE_PEM, cert)
     pub_key_obj = crt_obj.get_pubkey()
     return crypto.dump_publickey(crypto.FILETYPE_PEM, pub_key_obj)
@@ -32,14 +34,36 @@ def verify_capif_invoker_token(request: Request) -> None:
         logging.error("Internal error: CAPIF provider is not initialized")
         raise InternalServerError()
 
+    public_key = _extract_public_key(capif_provider.capif_cert_pem_path)
     try:
-        jwt.decode(
-            token,
-            _extract_public_key(capif_provider.capif_cert_pem_path),
-            algorithms=["RS256"],
-        )
+        # TODO why is RS256 only here and not on the other decodes?
+        jwt.decode(token, public_key, algorithms=["RS256"])
     except jwt.PyJWTError:
         raise Unauthorized()
+
+
+def _log_token_expiry(token: str) -> None:
+    """Log the expiry time of a CAPIF access token (best-effort, never raises)."""
+    try:
+        claims = jwt.decode(
+            token, options={"verify_signature": False, "verify_exp": False}
+        )
+    except jwt.PyJWTError:
+        logging.warning("Could not decode CAPIF token to determine its expiry time")
+        return
+
+    exp = claims.get("exp")
+    if exp is None:
+        logging.info("CAPIF token has no 'exp' claim")
+        return
+
+    expires_at = datetime.fromtimestamp(exp, tz=timezone.utc)
+    remaining = expires_at - datetime.now(tz=timezone.utc)
+    logging.info(
+        "CAPIF token expires at %s (in %d seconds)",
+        expires_at.isoformat(),
+        int(remaining.total_seconds()),
+    )
 
 
 def get_nef_capif_token(force_refresh: bool = False) -> str:
@@ -68,4 +92,5 @@ def get_nef_capif_token(force_refresh: bool = False) -> str:
             raise InternalServerError()
 
     service_discoverer.get_tokens()
+    _log_token_expiry(str(service_discoverer.token))
     return str(service_discoverer.token)

@@ -1,5 +1,6 @@
 import logging
 import asyncio
+import time
 from enum import Enum
 from typing import Optional, Union
 from datetime import datetime
@@ -88,7 +89,7 @@ class NefGeofencingSubscriptionInterface(
         self.notification_url = nef_settings.get_notification_url()
 
     async def create_subscription(
-        self, req: SubscriptionRequest, device: Device
+        self, req: SubscriptionRequest, device: Device, x_correlator: Optional[str] = None
     ) -> Subscription:
         # Store subscription
         req.config.subscriptionDetail.device = device
@@ -108,15 +109,27 @@ class NefGeofencingSubscriptionInterface(
 
             body = self.install_device_identifiers(body, device)
 
-            res = await self.httpx_client.post(
-                discover_nef_url(
-                    nef_settings=self.nef_settings,
-                    fallback="/3gpp-monitoring-event/v1/{scsAsId}/subscriptions",
-                    resource_name="Create Subscription",
-                    api_name_filter="monitoring-event",
-                    operation="POST",
-                ).format(scsAsId=self.af_id),
-                json=jsonable_encoder(body),
+            nef_url = discover_nef_url(
+                nef_settings=self.nef_settings,
+                fallback="/3gpp-monitoring-event/v1/{scsAsId}/subscriptions",
+                resource_name="Create Subscription",
+                api_name_filter="monitoring-event",
+                operation="POST",
+            ).format(scsAsId=self.af_id)
+            nef_payload = jsonable_encoder(body)
+
+            _bench_start = time.perf_counter_ns()
+            res = await self.httpx_client.post(nef_url, json=nef_payload)
+            _bench_time_ns = time.perf_counter_ns() - _bench_start
+
+            LOG.info(
+                'BENCHMARK: {"api": "NEF", "resource": "Create Subscription", '
+                '"filter": "monitoring-event", "op": "POST", "x_correlator": "%s", '
+                '"ue": "%s", "time_ns": %d, "status": %d}',
+                x_correlator,
+                device.phoneNumber or device.networkAccessIdentifier or device.ipv6Address,
+                _bench_time_ns,
+                res.status_code,
             )
 
             # Check success of monitoring event subscription
